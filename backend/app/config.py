@@ -15,8 +15,8 @@ ONLINE_STORE_CAPACITY = os.getenv("ONLINE_STORE_CAPACITY", "CU_1")
 
 # Underlying Postgres object names for the two published online tables. These are set once
 # the setup job has published the tables and we've inspected the resulting Postgres schema.
-ONLINE_TABLE_CURRENT = os.getenv("ONLINE_TABLE_CURRENT", "feature_offline_current")
-ONLINE_TABLE_TIMESERIES = os.getenv("ONLINE_TABLE_TIMESERIES", "feature_offline_timeseries")
+ONLINE_TABLE_CURRENT = os.getenv("ONLINE_TABLE_CURRENT", "online_feature_current")
+ONLINE_TABLE_TIMESERIES = os.getenv("ONLINE_TABLE_TIMESERIES", "online_feature_timeseries")
 ONLINE_PG_SCHEMA = os.getenv("ONLINE_PG_SCHEMA", SCHEMA)
 
 SERVING_ENDPOINT_NAME = os.getenv("SERVING_ENDPOINT_NAME", "fscomp-churn-serving")
