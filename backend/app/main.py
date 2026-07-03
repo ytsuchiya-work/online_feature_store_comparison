@@ -16,6 +16,19 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/debug/env")
+def debug_env():
+    from app import config
+    return {
+        "PGHOST": repr(config.PGHOST),
+        "PGPORT": repr(config.PGPORT),
+        "PGDATABASE": repr(config.PGDATABASE),
+        "PGUSER": repr(config.PGUSER),
+        "PGSSLMODE": repr(config.PGSSLMODE),
+        "ONLINE_STORE_ENDPOINT": repr(config.ONLINE_STORE_ENDPOINT),
+    }
+
+
 STATIC_DIR = Path(__file__).parent / "static"
 if STATIC_DIR.exists():
     app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
