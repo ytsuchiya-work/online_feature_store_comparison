@@ -26,7 +26,7 @@ SERVING_ENDPOINT_NAME = os.getenv("SERVING_ENDPOINT_NAME", "fscomp-churn-serving
 # OAuth token must be generated per-connection via WorkspaceClient.postgres.generate_database_credential.
 PGHOST = os.getenv("PGHOST")
 PGPORT = os.getenv("PGPORT", "5432")
-PGDATABASE = os.getenv("PGDATABASE", "databricks_postgres")
+PGDATABASE = os.getenv("PGDATABASE", CATALOG)
 PGUSER = os.getenv("PGUSER")
 PGSSLMODE = os.getenv("PGSSLMODE", "require")
 ONLINE_STORE_ENDPOINT = os.getenv(
