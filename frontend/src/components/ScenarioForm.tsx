@@ -1,21 +1,14 @@
 import { useState } from 'react'
 import { api, type RunRequest, type ScenarioId } from '../api'
+import { getScenarioMeta } from '../scenarios'
 
-const SCENARIOS: { id: ScenarioId; label: string; hint: string }[] = [
-  { id: 'A', label: 'A: 最新値lookup', hint: 'offline vs online の単発/バッチlookup latency' },
-  { id: 'B', label: 'B: 時系列lookup', hint: 'offline point-in-time join vs online 最新値' },
-  { id: 'C', label: 'C: freshness', hint: 'offline更新 → online反映までの遅延' },
-  { id: 'D', label: 'D: 同時実行負荷', hint: '高concurrencyでのlatency/エラー率劣化' },
-  { id: 'E', label: 'E: 自動feature lookup', hint: 'Model Serving自動lookup vs 生lookup' },
-]
-
-export function ScenarioForm({ onStarted }: { onStarted: (runId: string) => void }) {
-  const [scenarioId, setScenarioId] = useState<ScenarioId>('A')
-  const [keySet, setKeySet] = useState<RunRequest['key_set']>('small')
-  const [accessPattern, setAccessPattern] = useState<RunRequest['access_pattern']>('uniform')
-  const [concurrency, setConcurrency] = useState(1)
-  const [batchSize, setBatchSize] = useState(1)
-  const [requestCount, setRequestCount] = useState(100)
+export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId; onStarted: (runId: string) => void }) {
+  const meta = getScenarioMeta(scenarioId)
+  const [keySet, setKeySet] = useState<RunRequest['key_set']>(meta.defaults.keySet)
+  const [accessPattern, setAccessPattern] = useState<RunRequest['access_pattern']>(meta.defaults.accessPattern)
+  const [concurrency, setConcurrency] = useState(meta.defaults.concurrency)
+  const [batchSize, setBatchSize] = useState(meta.defaults.batchSize)
+  const [requestCount, setRequestCount] = useState(meta.defaults.requestCount)
   const [publishMode, setPublishMode] = useState<'TRIGGERED' | 'CONTINUOUS' | ''>('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,58 +39,99 @@ export function ScenarioForm({ onStarted }: { onStarted: (runId: string) => void
 
   return (
     <div className="card">
-      <h2>シナリオ実行</h2>
-      <div className="scenario-grid">
-        {SCENARIOS.map((s) => (
-          <button
-            key={s.id}
-            className={`scenario-btn ${scenarioId === s.id ? 'active' : ''}`}
-            onClick={() => setScenarioId(s.id)}
-          >
-            <strong>{s.label}</strong>
-            <span>{s.hint}</span>
-          </button>
-        ))}
+      <h2>{meta.title}</h2>
+
+      <div className="doc-block">
+        <h3>この実装がやっていること</h3>
+        <ol>
+          {meta.howItWorks.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ol>
       </div>
 
+      <div className="doc-block">
+        <h3>何と何を比較しているか</h3>
+        <ul>
+          {meta.whatItCompares.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="doc-block callout">
+        <h3>結果の読み方</h3>
+        <p>{meta.howToRead}</p>
+        {meta.tip && <p className="tip">💡 {meta.tip}</p>}
+      </div>
+
+      <h3>実行パラメータ</h3>
       <div className="form-grid">
         <label>
-          Key set
+          {meta.params.keySet.label}
           <select value={keySet} onChange={(e) => setKeySet(e.target.value as any)}>
             <option value="small">small (100)</option>
             <option value="medium">medium (10,000)</option>
             <option value="large">large (1,000,000)</option>
           </select>
+          <span className="field-help">{meta.params.keySet.help}</span>
         </label>
-        <label>
-          Access pattern
-          <select value={accessPattern} onChange={(e) => setAccessPattern(e.target.value as any)}>
-            <option value="uniform">uniform</option>
-            <option value="hot">hot (同一キー反復)</option>
-            <option value="cold">cold (広く分散)</option>
-            <option value="skewed">skewed (80/20)</option>
-          </select>
-        </label>
-        <label>
-          Concurrency
-          <input type="number" min={1} max={500} value={concurrency} onChange={(e) => setConcurrency(Number(e.target.value))} />
-        </label>
-        <label>
-          Batch size
-          <input type="number" min={1} max={1000} value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} />
-        </label>
-        <label>
-          Request count
-          <input type="number" min={1} max={1000000} value={requestCount} onChange={(e) => setRequestCount(Number(e.target.value))} />
-        </label>
-        {scenarioId === 'C' && (
+
+        {meta.showAccessPattern && meta.params.accessPattern && (
           <label>
-            Publish mode切替 (任意)
-            <select value={publishMode} onChange={(e) => setPublishMode(e.target.value as any)}>
-              <option value="">変更しない</option>
-              <option value="TRIGGERED">TRIGGERED</option>
-              <option value="CONTINUOUS">CONTINUOUS</option>
+            {meta.params.accessPattern.label}
+            <select value={accessPattern} onChange={(e) => setAccessPattern(e.target.value as any)}>
+              <option value="uniform">uniform（均等ランダム）</option>
+              <option value="hot">hot（同一キー反復）</option>
+              <option value="cold">cold（広く分散）</option>
+              <option value="skewed">skewed（80/20偏り）</option>
             </select>
+            <span className="field-help">{meta.params.accessPattern.help}</span>
+          </label>
+        )}
+
+        <label>
+          {meta.params.concurrency.label}
+          <input
+            type="number"
+            min={1}
+            max={500}
+            value={concurrency}
+            disabled={scenarioId === 'C'}
+            onChange={(e) => setConcurrency(Number(e.target.value))}
+          />
+          <span className="field-help">{meta.params.concurrency.help}</span>
+        </label>
+
+        {meta.showBatchSize && meta.params.batchSize && (
+          <label>
+            {meta.params.batchSize.label}
+            <input type="number" min={1} max={1000} value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} />
+            <span className="field-help">{meta.params.batchSize.help}</span>
+          </label>
+        )}
+
+        <label>
+          {meta.params.requestCount.label}
+          <input
+            type="number"
+            min={1}
+            max={1000000}
+            value={requestCount}
+            onChange={(e) => setRequestCount(Number(e.target.value))}
+          />
+          <span className="field-help">{meta.params.requestCount.help}</span>
+        </label>
+
+        {meta.showPublishMode && meta.params.publishMode && (
+          <label>
+            {meta.params.publishMode.label}
+            <select value={publishMode} onChange={(e) => setPublishMode(e.target.value as any)}>
+              <option value="">変更しない（現在の設定のまま計測）</option>
+              <option value="TRIGGERED">TRIGGERED に切り替えてから計測</option>
+              <option value="CONTINUOUS">CONTINUOUS に切り替えてから計測</option>
+            </select>
+            <span className="field-help">{meta.params.publishMode.help}</span>
           </label>
         )}
       </div>
@@ -110,7 +144,7 @@ export function ScenarioForm({ onStarted }: { onStarted: (runId: string) => void
       {error && <p className="error">{error}</p>}
 
       <button className="primary" disabled={submitting} onClick={submit}>
-        {submitting ? '実行開始中...' : 'シナリオを実行'}
+        {submitting ? '実行開始中...' : `シナリオ${scenarioId}を実行`}
       </button>
     </div>
   )

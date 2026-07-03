@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type RunSummary } from '../api'
+import { api, type RunSummary, type ScenarioId } from '../api'
 
 const STATUS_COLOR: Record<string, string> = {
   pending: '#999',
@@ -8,7 +8,17 @@ const STATUS_COLOR: Record<string, string> = {
   failed: '#dc2626',
 }
 
-export function RunList({ selectedRunId, onSelect, refreshKey }: { selectedRunId?: string; onSelect: (id: string) => void; refreshKey: number }) {
+export function RunList({
+  scenarioId,
+  selectedRunId,
+  onSelect,
+  refreshKey,
+}: {
+  scenarioId?: ScenarioId
+  selectedRunId?: string
+  onSelect: (id: string) => void
+  refreshKey: number
+}) {
   const [runs, setRuns] = useState<RunSummary[]>([])
 
   useEffect(() => {
@@ -16,7 +26,7 @@ export function RunList({ selectedRunId, onSelect, refreshKey }: { selectedRunId
     async function poll() {
       try {
         const data = await api.listRuns()
-        if (!stop) setRuns(data)
+        if (!stop) setRuns(scenarioId ? data.filter((r) => r.scenario_id === scenarioId) : data)
       } catch (e) {
         // ignore transient errors
       }
@@ -27,11 +37,11 @@ export function RunList({ selectedRunId, onSelect, refreshKey }: { selectedRunId
       stop = true
       clearInterval(t)
     }
-  }, [refreshKey])
+  }, [refreshKey, scenarioId])
 
   return (
     <div className="card">
-      <h2>実行履歴</h2>
+      <h2>{scenarioId ? `シナリオ${scenarioId}の実行履歴` : '実行履歴'}</h2>
       <table className="run-table">
         <thead>
           <tr>
