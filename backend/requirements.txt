@@ -1,0 +1,8 @@
+fastapi>=0.115
+uvicorn[standard]>=0.34
+databricks-sql-connector>=3.7
+databricks-sdk>=0.40
+psycopg[binary]>=3.2
+psycopg-pool>=3.2
+pydantic>=2.10
+requests>=2.32
