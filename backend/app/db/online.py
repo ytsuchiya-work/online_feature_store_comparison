@@ -74,7 +74,7 @@ def resolve_table_name(cur, hint: str) -> str:
     row = cur.fetchone()
     if row is None:
         raise RuntimeError(f"Could not find published online table matching '{hint}'")
-    return f'"{row[0]}"."{row[1]}"'
+    return f'"{row["table_schema"]}"."{row["table_name"]}"'
 
 
 def lookup_current(entity_ids: list[str]) -> tuple[list[dict[str, Any]], float]:
