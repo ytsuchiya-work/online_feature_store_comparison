@@ -16,8 +16,14 @@ function App() {
 
   return (
     <div className="app">
-      <header>
-        <h1>Online vs Offline Feature Store Benchmark</h1>
+      <header className="app-header">
+        <div className="brand">
+          <span className="brand-mark">⚡</span>
+          <div>
+            <h1>Feature Store Benchmark</h1>
+            <p className="brand-sub">Lakebase Online vs Offline — latency &amp; freshness comparison</p>
+          </div>
+        </div>
       </header>
 
       <nav className="scenario-tabs">
@@ -30,17 +36,22 @@ function App() {
               setSelectedRunId(undefined)
             }}
           >
+            <span className="tab-icon">{s.icon}</span>
             {s.shortLabel}
           </button>
         ))}
-        <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>
-          📊 ダッシュボード
+        <button className={`dashboard-tab ${tab === 'dashboard' ? 'active' : ''}`} onClick={() => setTab('dashboard')}>
+          <span className="tab-icon">📊</span>
+          ダッシュボード
         </button>
       </nav>
 
       {tab !== 'dashboard' && (
-        <div className="layout">
-          <div className="col">
+        <div className="stack">
+          <section className="tier">
+            <div className="tier-label">
+              <span className="tier-index">1</span> シナリオ
+            </div>
             <ScenarioForm
               scenarioId={tab}
               onStarted={(id) => {
@@ -48,9 +59,25 @@ function App() {
                 setRefreshKey((k) => k + 1)
               }}
             />
+          </section>
+
+          <section className="tier">
+            <div className="tier-label">
+              <span className="tier-index">2</span> 結果
+            </div>
+            {selectedRunId ? (
+              <RunDetail runId={selectedRunId} />
+            ) : (
+              <div className="card empty-state">実行するか、下の履歴から run を選ぶと結果がここに表示されます。</div>
+            )}
+          </section>
+
+          <section className="tier">
+            <div className="tier-label">
+              <span className="tier-index">3</span> 実行履歴
+            </div>
             <RunList scenarioId={tab} selectedRunId={selectedRunId} onSelect={setSelectedRunId} refreshKey={refreshKey} />
-          </div>
-          <div className="col">{selectedRunId && <RunDetail runId={selectedRunId} />}</div>
+          </section>
         </div>
       )}
 

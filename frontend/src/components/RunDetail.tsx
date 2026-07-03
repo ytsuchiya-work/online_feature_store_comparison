@@ -1,6 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api, type RunSummary } from '../api'
+
+const SOURCE_COLOR: Record<string, string> = {
+  offline: '#3b82f6',
+  online: '#10b981',
+  serving: '#8b5cf6',
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  offline: '🗄️ Offline (Delta)',
+  online: '⚡ Online (Lakebase)',
+  serving: '🤖 Serving (自動lookup)',
+}
+
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  pending: { label: '待機中', color: '#9ca3af' },
+  running: { label: '実行中', color: '#3b82f6' },
+  succeeded: { label: '成功', color: '#10b981' },
+  failed: { label: '失敗', color: '#ef4444' },
+}
 
 export function RunDetail({ runId }: { runId: string }) {
   const [run, setRun] = useState<RunSummary | null>(null)
@@ -45,102 +64,115 @@ export function RunDetail({ runId }: { runId: string }) {
       p99: v.p99_ms,
       qps: v.qps,
       error_rate: v.error_rate,
+      request_count: v.request_count,
     }))
 
+  const statusMeta = STATUS_META[run.status] ?? { label: run.status, color: '#9ca3af' }
+
   return (
-    <div className="card">
-      <h2>
-        Run {run.run_id.slice(0, 8)} — シナリオ{run.scenario_id} ({run.status})
-      </h2>
+    <div className="card run-detail">
+      <div className="run-detail-head">
+        <div>
+          <span className="eyebrow">Run {run.run_id.slice(0, 8)}</span>
+          <h2>シナリオ {run.scenario_id}</h2>
+        </div>
+        <span className="status-pill" style={{ background: `${statusMeta.color}1a`, color: statusMeta.color }}>
+          <span className="status-dot" style={{ background: statusMeta.color }} />
+          {run.status === 'running' && <span className="status-dot pulse" style={{ background: statusMeta.color }} />}
+          {statusMeta.label}
+        </span>
+      </div>
+
       {run.status === 'failed' && <pre className="error">{run.error}</pre>}
 
       {chartData.length > 0 && (
-        <div style={{ width: '100%', height: 260 }}>
-          <ResponsiveContainer>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="source" />
-              <YAxis label={{ value: 'ms', angle: -90, position: 'insideLeft' }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="p50" fill="#3b82f6" name="p50 (ms)" />
-              <Bar dataKey="p95" fill="#f59e0b" name="p95 (ms)" />
-              <Bar dataKey="p99" fill="#dc2626" name="p99 (ms)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {chartData.length > 0 && (
-        <table className="metrics-table">
-          <thead>
-            <tr>
-              <th>source</th>
-              <th>p50</th>
-              <th>p95</th>
-              <th>p99</th>
-              <th>qps</th>
-              <th>error rate</th>
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          <div className="stat-tile-grid">
             {chartData.map((d) => (
-              <tr key={d.source}>
-                <td>{d.source}</td>
-                <td>{d.p50?.toFixed(2)}</td>
-                <td>{d.p95?.toFixed(2)}</td>
-                <td>{d.p99?.toFixed(2)}</td>
-                <td>{d.qps?.toFixed(2)}</td>
-                <td>{(d.error_rate * 100).toFixed(1)}%</td>
-              </tr>
+              <div className="stat-tile" key={d.source} style={{ '--tile-accent': SOURCE_COLOR[d.source] ?? '#6b7280' } as CSSProperties}>
+                <span className="stat-tile-label">{SOURCE_LABEL[d.source] ?? d.source}</span>
+                <span className="stat-tile-value">{d.p50?.toFixed(2)} ms</span>
+                <span className="stat-tile-sub">p50 latency</span>
+                <div className="stat-tile-meta">
+                  <span>p95 {d.p95?.toFixed(2)}ms</span>
+                  <span>p99 {d.p99?.toFixed(2)}ms</span>
+                  <span>{d.qps?.toFixed(1)} qps</span>
+                  <span className={d.error_rate > 0 ? 'stat-tile-error' : ''}>err {(d.error_rate * 100).toFixed(1)}%</span>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+
+          <div style={{ width: '100%', height: 280, marginTop: 20 }}>
+            <ResponsiveContainer>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eef0f2" />
+                <XAxis dataKey="source" tickFormatter={(s) => SOURCE_LABEL[s] ?? s} />
+                <YAxis label={{ value: 'ms', angle: -90, position: 'insideLeft' }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="p50" fill="#93c5fd" name="p50 (ms)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="p95" fill="#f59e0b" name="p95 (ms)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="p99" fill="#dc2626" name="p99 (ms)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
       )}
 
       {outcome.avg_freshness_lag_ms !== undefined && (
-        <p>
-          平均 freshness lag: <strong>{outcome.avg_freshness_lag_ms?.toFixed(0)} ms</strong> (publish_mode: {outcome.publish_mode})
-        </p>
+        <div className="highlight-box">
+          🔄 平均 freshness lag: <strong>{outcome.avg_freshness_lag_ms?.toFixed(0)} ms</strong>（publish_mode: {outcome.publish_mode}）
+        </div>
       )}
-      {outcome.note && <p className="note">{outcome.note}</p>}
+      {outcome.note && <p className="note">ℹ️ {outcome.note}</p>}
       {outcome.lookup_overhead_p50_ms !== undefined && (
-        <p>
-          自動feature lookupのoverhead (p50): <strong>{outcome.lookup_overhead_p50_ms.toFixed(2)} ms</strong>
-        </p>
+        <div className="highlight-box">
+          🤖 自動feature lookupのoverhead (p50): <strong>{outcome.lookup_overhead_p50_ms.toFixed(2)} ms</strong>
+        </div>
       )}
 
       {consistency.length > 0 && (
         <>
-          <h3>Value consistency</h3>
-          <table className="metrics-table">
-            <thead>
-              <tr>
-                <th>feature</th>
-                <th>match rate</th>
-                <th>total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {consistency.map((c) => (
-                <tr key={c.feature_name}>
-                  <td>{c.feature_name}</td>
-                  <td>{c.match_rate !== null ? `${(c.match_rate * 100).toFixed(1)}%` : '-'}</td>
-                  <td>{c.total}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <h3 className="section-heading">✅ Value consistency</h3>
+          <div className="consistency-grid">
+            {consistency.map((c) => {
+              const pct = c.match_rate !== null ? c.match_rate * 100 : null
+              const color = pct === null ? '#9ca3af' : pct >= 99 ? '#10b981' : pct >= 50 ? '#d97706' : '#ef4444'
+              return (
+                <div className="consistency-tile" key={c.feature_name}>
+                  <span className="consistency-feature">{c.feature_name}</span>
+                  <span className="consistency-rate" style={{ color }}>
+                    {pct !== null ? `${pct.toFixed(1)}%` : '-'}
+                  </span>
+                  <div className="consistency-bar">
+                    <div className="consistency-bar-fill" style={{ width: `${pct ?? 0}%`, background: color }} />
+                  </div>
+                  <span className="consistency-total">{c.total} 件中一致</span>
+                </div>
+              )
+            })}
+          </div>
         </>
       )}
 
       {cost?.snapshot && (
         <>
-          <h3>コスト概算</h3>
-          <p>
-            capacity: {cost.snapshot.online_store_capacity} / elapsed: {cost.snapshot.elapsed_sec?.toFixed(1)}s / estimated CU-hours:{' '}
-            {cost.snapshot.estimated_cu_hours}
-          </p>
+          <h3 className="section-heading">💰 コスト概算</h3>
+          <div className="stat-tile-grid">
+            <div className="stat-tile" style={{ '--tile-accent': '#6b7280' } as CSSProperties}>
+              <span className="stat-tile-label">Capacity</span>
+              <span className="stat-tile-value">{cost.snapshot.online_store_capacity}</span>
+            </div>
+            <div className="stat-tile" style={{ '--tile-accent': '#6b7280' } as CSSProperties}>
+              <span className="stat-tile-label">Elapsed</span>
+              <span className="stat-tile-value">{cost.snapshot.elapsed_sec?.toFixed(1)}s</span>
+            </div>
+            <div className="stat-tile" style={{ '--tile-accent': '#6b7280' } as CSSProperties}>
+              <span className="stat-tile-label">Estimated CU-hours</span>
+              <span className="stat-tile-value">{cost.snapshot.estimated_cu_hours}</span>
+            </div>
+          </div>
           {cost.extrapolation && (
             <table className="metrics-table">
               <thead>

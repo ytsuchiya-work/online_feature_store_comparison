@@ -7,6 +7,8 @@ export interface ParamDoc {
 
 export interface ScenarioMeta {
   id: ScenarioId
+  icon: string
+  accent: string
   shortLabel: string
   title: string
   /** How it's implemented under the hood. */
@@ -84,6 +86,8 @@ const publishModeHelp: ParamDoc = {
 export const SCENARIOS: ScenarioMeta[] = [
   {
     id: 'A',
+    icon: '🔍',
+    accent: '#3b82f6',
     shortLabel: 'A. 最新値lookup',
     title: 'シナリオA: 最新値lookup（offline vs online）',
     howItWorks: [
@@ -115,6 +119,8 @@ export const SCENARIOS: ScenarioMeta[] = [
   },
   {
     id: 'B',
+    icon: '🕰️',
+    accent: '#0891b2',
     shortLabel: 'B. 時系列lookup',
     title: 'シナリオB: 時系列lookup（point-in-time vs 常に最新値）',
     howItWorks: [
@@ -146,6 +152,8 @@ export const SCENARIOS: ScenarioMeta[] = [
   },
   {
     id: 'C',
+    icon: '🔄',
+    accent: '#d97706',
     shortLabel: 'C. Freshness',
     title: 'シナリオC: Freshness（更新反映までの遅延）',
     howItWorks: [
@@ -175,6 +183,8 @@ export const SCENARIOS: ScenarioMeta[] = [
   },
   {
     id: 'D',
+    icon: '🚦',
+    accent: '#dc2626',
     shortLabel: 'D. 同時実行負荷',
     title: 'シナリオD: 同時実行負荷（concurrencyスケーラビリティ）',
     howItWorks: [
@@ -205,6 +215,8 @@ export const SCENARIOS: ScenarioMeta[] = [
   },
   {
     id: 'E',
+    icon: '🤖',
+    accent: '#8b5cf6',
     shortLabel: 'E. 自動feature lookup',
     title: 'シナリオE: 自動feature lookup（Model Serving vs 生lookup）',
     howItWorks: [

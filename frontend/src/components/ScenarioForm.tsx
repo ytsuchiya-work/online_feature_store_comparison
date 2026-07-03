@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { api, type RunRequest, type ScenarioId } from '../api'
 import { getScenarioMeta } from '../scenarios'
 
@@ -38,36 +38,47 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
   }
 
   return (
-    <div className="card">
-      <h2>{meta.title}</h2>
-
-      <div className="doc-block">
-        <h3>この実装がやっていること</h3>
-        <ol>
-          {meta.howItWorks.map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-        </ol>
+    <div className="card scenario-card" style={{ '--accent': meta.accent } as CSSProperties}>
+      <div className="scenario-card-head">
+        <span className="scenario-icon-badge">{meta.icon}</span>
+        <h2>{meta.title}</h2>
       </div>
 
-      <div className="doc-block">
-        <h3>何と何を比較しているか</h3>
-        <ul>
-          {meta.whatItCompares.map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-        </ul>
+      <div className="doc-grid">
+        <div className="doc-panel">
+          <h3>
+            <span className="doc-icon">⚙️</span> この実装がやっていること
+          </h3>
+          <ol>
+            {meta.howItWorks.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="doc-panel">
+          <h3>
+            <span className="doc-icon">⚖️</span> 何と何を比較しているか
+          </h3>
+          <ul>
+            {meta.whatItCompares.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div className="doc-block callout">
-        <h3>結果の読み方</h3>
+        <h3>
+          <span className="doc-icon">💡</span> 結果の読み方
+        </h3>
         <p>{meta.howToRead}</p>
-        {meta.tip && <p className="tip">💡 {meta.tip}</p>}
+        {meta.tip && <p className="tip">✨ {meta.tip}</p>}
       </div>
 
-      <h3>実行パラメータ</h3>
+      <h3 className="params-heading">実行パラメータ</h3>
       <div className="form-grid">
-        <label>
+        <label className="param-card">
           {meta.params.keySet.label}
           <select value={keySet} onChange={(e) => setKeySet(e.target.value as any)}>
             <option value="small">small (100)</option>
@@ -78,7 +89,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
         </label>
 
         {meta.showAccessPattern && meta.params.accessPattern && (
-          <label>
+          <label className="param-card">
             {meta.params.accessPattern.label}
             <select value={accessPattern} onChange={(e) => setAccessPattern(e.target.value as any)}>
               <option value="uniform">uniform（均等ランダム）</option>
@@ -90,7 +101,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
           </label>
         )}
 
-        <label>
+        <label className="param-card">
           {meta.params.concurrency.label}
           <input
             type="number"
@@ -104,14 +115,14 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
         </label>
 
         {meta.showBatchSize && meta.params.batchSize && (
-          <label>
+          <label className="param-card">
             {meta.params.batchSize.label}
             <input type="number" min={1} max={1000} value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} />
             <span className="field-help">{meta.params.batchSize.help}</span>
           </label>
         )}
 
-        <label>
+        <label className="param-card">
           {meta.params.requestCount.label}
           <input
             type="number"
@@ -124,7 +135,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
         </label>
 
         {meta.showPublishMode && meta.params.publishMode && (
-          <label>
+          <label className="param-card">
             {meta.params.publishMode.label}
             <select value={publishMode} onChange={(e) => setPublishMode(e.target.value as any)}>
               <option value="">変更しない（現在の設定のまま計測）</option>
@@ -138,13 +149,19 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
 
       {isLargeRun && (
         <p className="warning">
-          large key set / 高request数 / 高concurrencyの実行はコストに影響します。実行前に規模を確認してください。
+          ⚠️ large key set / 高request数 / 高concurrencyの実行はコストに影響します。実行前に規模を確認してください。
         </p>
       )}
       {error && <p className="error">{error}</p>}
 
       <button className="primary" disabled={submitting} onClick={submit}>
-        {submitting ? '実行開始中...' : `シナリオ${scenarioId}を実行`}
+        {submitting ? (
+          <>
+            <span className="spinner" /> 実行開始中...
+          </>
+        ) : (
+          <>▶ シナリオ{scenarioId}を実行</>
+        )}
       </button>
     </div>
   )
