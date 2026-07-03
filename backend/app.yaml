@@ -11,13 +11,3 @@ env:
     valueFrom: sql-warehouse
   - name: SERVING_ENDPOINT_NAME
     valueFrom: serving-endpoint
-  - name: PGHOST
-    valueFrom: postgres
-  - name: PGDATABASE
-    valueFrom: postgres
-  - name: PGUSER
-    valueFrom: postgres
-  - name: PGPORT
-    valueFrom: postgres
-  - name: PGSSLMODE
-    valueFrom: postgres
