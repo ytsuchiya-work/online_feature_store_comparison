@@ -8,6 +8,7 @@ connection must carry a freshly generated database credential, per Databricks' d
 pattern for connecting a custom app to a Lakebase Autoscaling project.
 """
 import os
+import threading
 import time
 from typing import Any
 
@@ -19,6 +20,7 @@ from psycopg_pool import ConnectionPool
 from app import config
 
 _pool: ConnectionPool | None = None
+_pool_lock = threading.Lock()
 
 
 def _workspace_client() -> WorkspaceClient:
@@ -39,17 +41,21 @@ class OAuthConnection(psycopg.Connection):
 def get_pool() -> ConnectionPool:
     global _pool
     if _pool is None:
-        conninfo = (
-            f"dbname={config.PGDATABASE} user={config.PGUSER} host={config.PGHOST} "
-            f"port={config.PGPORT} sslmode={config.PGSSLMODE}"
-        )
-        _pool = ConnectionPool(
-            conninfo=conninfo,
-            connection_class=OAuthConnection,
-            min_size=1,
-            max_size=20,
-            open=True,
-        )
+        with _pool_lock:
+            if _pool is None:
+                conninfo = (
+                    f"dbname={config.PGDATABASE} user={config.PGUSER} host={config.PGHOST} "
+                    f"port={config.PGPORT} sslmode={config.PGSSLMODE}"
+                )
+                pool = ConnectionPool(
+                    conninfo=conninfo,
+                    connection_class=OAuthConnection,
+                    min_size=1,
+                    max_size=20,
+                    open=False,
+                )
+                pool.open(wait=True, timeout=30)
+                _pool = pool
     return _pool
 
 
