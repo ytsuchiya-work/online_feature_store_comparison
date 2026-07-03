@@ -1,0 +1,2 @@
+# online_feature_store_comparison
+Lakebaseを使用したOnline Feature Storeと通常のFeature Storeの性能検証を行うアプリ
