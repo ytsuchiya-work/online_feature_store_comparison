@@ -228,6 +228,13 @@ body {
   font-weight: 600;
 }
 
+.param-title {
+  display: flex;
+  align-items: flex-start;
+  min-height: 2.6em;
+  line-height: 1.3;
+}
+
 .param-card {
   background: #fbfbfc;
   border: 1px solid var(--border);

@@ -79,7 +79,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
       <h3 className="params-heading">実行パラメータ</h3>
       <div className="form-grid">
         <label className="param-card">
-          {meta.params.keySet.label}
+          <span className="param-title">{meta.params.keySet.label}</span>
           <select value={keySet} onChange={(e) => setKeySet(e.target.value as any)}>
             <option value="small">small (100)</option>
             <option value="medium">medium (10,000)</option>
@@ -90,7 +90,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
 
         {meta.showAccessPattern && meta.params.accessPattern && (
           <label className="param-card">
-            {meta.params.accessPattern.label}
+            <span className="param-title">{meta.params.accessPattern.label}</span>
             <select value={accessPattern} onChange={(e) => setAccessPattern(e.target.value as any)}>
               <option value="uniform">uniform（均等ランダム）</option>
               <option value="hot">hot（同一キー反復）</option>
@@ -102,7 +102,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
         )}
 
         <label className="param-card">
-          {meta.params.concurrency.label}
+          <span className="param-title">{meta.params.concurrency.label}</span>
           <input
             type="number"
             min={1}
@@ -116,14 +116,14 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
 
         {meta.showBatchSize && meta.params.batchSize && (
           <label className="param-card">
-            {meta.params.batchSize.label}
+            <span className="param-title">{meta.params.batchSize.label}</span>
             <input type="number" min={1} max={1000} value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} />
             <span className="field-help">{meta.params.batchSize.help}</span>
           </label>
         )}
 
         <label className="param-card">
-          {meta.params.requestCount.label}
+          <span className="param-title">{meta.params.requestCount.label}</span>
           <input
             type="number"
             min={1}
@@ -136,7 +136,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
 
         {meta.showPublishMode && meta.params.publishMode && (
           <label className="param-card">
-            {meta.params.publishMode.label}
+            <span className="param-title">{meta.params.publishMode.label}</span>
             <select value={publishMode} onChange={(e) => setPublishMode(e.target.value as any)}>
               <option value="">変更しない（現在の設定のまま計測）</option>
               <option value="TRIGGERED">TRIGGERED に切り替えてから計測</option>
