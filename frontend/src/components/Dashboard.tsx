@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { api, type ResultRow } from '../api'
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { api, type ResultRow, type ScenarioId } from '../api'
+import { SCENARIOS } from '../scenarios'
+
+const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null)
 
 export function Dashboard() {
   const [rows, setRows] = useState<ResultRow[]>([])
+  const [concurrencyScenario, setConcurrencyScenario] = useState<ScenarioId>('D')
 
   useEffect(() => {
     let stop = false
@@ -23,14 +27,25 @@ export function Dashboard() {
     }
   }, [])
 
-  const concurrencySeries = rows
-    .filter((r) => r.scenario_id === 'D')
-    .sort((a, b) => a.concurrency - b.concurrency)
-    .map((r) => ({ concurrency: r.concurrency, [`${r.source_type}_p95`]: r.p95_ms, [`${r.source_type}_qps`]: r.qps }))
+  // Group by concurrency, keeping offline/online separate, and average duplicate runs at the
+  // same concurrency so each concurrency value renders as exactly one bar per source.
+  const concurrencyGroups = new Map<number, { offline: number[]; online: number[] }>()
+  for (const r of rows) {
+    if (r.scenario_id !== concurrencyScenario) continue
+    if (r.source_type !== 'offline' && r.source_type !== 'online') continue
+    if (!concurrencyGroups.has(r.concurrency)) concurrencyGroups.set(r.concurrency, { offline: [], online: [] })
+    concurrencyGroups.get(r.concurrency)![r.source_type].push(r.p95_ms)
+  }
+  const concurrencySeries = Array.from(concurrencyGroups.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([concurrency, vals]) => ({
+      concurrency,
+      offline_p95: avg(vals.offline) ?? undefined,
+      online_p95: avg(vals.online) ?? undefined,
+    }))
 
   const offlineRows = rows.filter((r) => r.source_type === 'offline')
   const onlineRows = rows.filter((r) => r.source_type === 'online')
-  const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null)
   const avgOfflineP50 = avg(offlineRows.map((r) => r.p50_ms))
   const avgOnlineP50 = avg(onlineRows.map((r) => r.p50_ms))
 
@@ -45,8 +60,9 @@ export function Dashboard() {
             通常はonlineがofflineより1〜2桁速い。
           </li>
           <li>
-            <strong>Concurrency別 p95 latency</strong> — シナリオD（同じ設定でconcurrencyだけ変えて複数回実行）の結果を
-            並べたグラフ。線が右肩上がりに急になっていれば、その並列度あたりで性能劣化が始まっていることを示す。
+            <strong>Concurrency別 p95 latency</strong> — プルダウンで選んだシナリオについて、同じ設定でconcurrencyだけ変えて
+            複数回実行した結果をoffline/online別の棒グラフで比較できる。バーが急に高くなっていれば、その並列度あたりで
+            性能劣化が始まっていることを示す（同じシナリオ・同じconcurrencyの実行が複数あれば平均値を表示）。
           </li>
           <li>
             <strong>全実行結果テーブル</strong> — すべてのシナリオ・実行の生の集計値一覧。特定の run を見比べたいときはこちらを参照。
@@ -75,32 +91,44 @@ export function Dashboard() {
         </div>
       )}
 
-      {concurrencySeries.length > 0 && (
+      <div className="concurrency-chart-head">
+        <h3>Concurrency別 p95 latency</h3>
+        <label className="scenario-select">
+          <span>シナリオ</span>
+          <select value={concurrencyScenario} onChange={(e) => setConcurrencyScenario(e.target.value as ScenarioId)}>
+            {SCENARIOS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.shortLabel}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {concurrencySeries.length > 0 ? (
         <>
-          <h3>Concurrency別 p95 latency（シナリオD）</h3>
           <p className="note">
-            横軸=concurrency（同時実行数）、縦軸=p95レイテンシ(ms)。offline/onlineそれぞれの折れ線が急激に立ち上がる地点が、
-            そのバックエンドの実質的な限界に近い並列度。
+            横軸=concurrency（同時実行数）、縦軸=p95レイテンシ(ms)。offlineとonlineを棒で並べて表示し、
+            同じconcurrencyで複数回実行している場合はその平均値を1本のバーとして示す。
+            バーが急激に高くなる地点が、そのバックエンドの実質的な限界に近い並列度。
           </p>
           <div style={{ width: '100%', height: 260 }}>
             <ResponsiveContainer>
-              <LineChart data={concurrencySeries}>
+              <BarChart data={concurrencySeries}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="concurrency" label={{ value: 'concurrency', position: 'insideBottom', offset: -5 }} />
                 <YAxis label={{ value: 'p95 (ms)', angle: -90, position: 'insideLeft' }} />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="offline_p95" stroke="#3b82f6" name="offline p95" />
-                <Line type="monotone" dataKey="online_p95" stroke="#16a34a" name="online p95" />
-              </LineChart>
+                <Bar dataKey="offline_p95" fill="#3b82f6" name="offline p95" />
+                <Bar dataKey="online_p95" fill="#16a34a" name="online p95" />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </>
-      )}
-      {concurrencySeries.length === 0 && (
+      ) : (
         <p className="note">
-          まだシナリオD（同時実行負荷）の実行がありません。「D. 同時実行負荷」タブでconcurrencyを変えながら複数回実行すると、
-          ここに比較チャートが表示されます。
+          シナリオ{concurrencyScenario}でconcurrencyを変えた実行がまだありません。該当シナリオのタブでconcurrencyを変えながら
+          複数回実行すると、ここに比較チャートが表示されます。
         </p>
       )}
 
@@ -123,6 +151,7 @@ export function Dashboard() {
             <th title="秒間リクエスト数">qps</th>
             <th title="エラー率(%)">error%</th>
             <th title="freshness計測時のみ: 更新反映までの遅延(ms)">freshness(ms)</th>
+            <th title="実行が作成された日時">Created Time</th>
           </tr>
         </thead>
         <tbody>
@@ -139,11 +168,12 @@ export function Dashboard() {
               <td>{r.qps?.toFixed(2)}</td>
               <td>{(r.error_rate * 100).toFixed(1)}</td>
               <td>{r.freshness_lag_ms ?? '-'}</td>
+              <td className="date-cell">{new Date(r.created_at).toLocaleString()}</td>
             </tr>
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={11}>まだ実行結果がありません。各シナリオタブから実行してください。</td>
+              <td colSpan={12}>まだ実行結果がありません。各シナリオタブから実行してください。</td>
             </tr>
           )}
         </tbody>

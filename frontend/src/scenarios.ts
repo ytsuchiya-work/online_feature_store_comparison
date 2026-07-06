@@ -2,7 +2,7 @@ import type { AccessPattern, KeySet, ScenarioId } from './api'
 
 export interface ParamDoc {
   label: string
-  help: string
+  help: string[]
 }
 
 export interface ScenarioMeta {
@@ -40,47 +40,58 @@ export interface ScenarioMeta {
 
 const keySetHelp: ParamDoc = {
   label: 'Key set（lookup対象プール）',
-  help:
-    'どのサイズのentity_idプールからサンプリングするか。small=100件 / medium=10,000件 / large=1,000,000件。' +
+  help: [
+    'どのサイズのentity_idプールからサンプリングするか。',
+    'small=100件 / medium=10,000件 / large=1,000,000件。',
     '大きいプールほど多様なキーを引けるが、large は初回クエリのウォームアップに時間がかかることがある。',
+  ],
 }
 
 const accessPatternHelp: ParamDoc = {
   label: 'Access pattern（サンプリング方式）',
-  help:
-    'key set からどうキーを選ぶか。' +
-    'uniform=毎回ランダムに1件選ぶ（一般的な分散アクセス）。' +
-    'hot=最初に選んだ1件を全リクエストで使い回す（同一キーへの反復アクセス、キャッシュが効きやすいケースを模す）。' +
-    'cold=プールの先頭から順番に一巡させる（キャッシュが効きにくい広い分散アクセス）。' +
+  help: [
+    'key set からどうキーを選ぶか。',
+    'uniform=毎回ランダムに1件選ぶ（一般的な分散アクセス）。',
+    'hot=最初に選んだ1件を全リクエストで使い回す（同一キーへの反復アクセス、キャッシュが効きやすいケースを模す）。',
+    'cold=プールの先頭から順番に一巡させる（キャッシュが効きにくい広い分散アクセス）。',
     'skewed=上位20%のキーに80%の確率でアクセスし、残り20%は全体からランダムに選ぶ（実運用でよくある偏った人気キー分布）。',
+  ],
 }
 
 const concurrencyHelp: ParamDoc = {
   label: 'Concurrency（同時実行数）',
-  help:
-    '同時に投げるリクエスト（またはバッチ）の数。内部ではこの数のスレッドで並列にoffline/onlineへ問い合わせる。' +
+  help: [
+    '同時に投げるリクエスト（またはバッチ）の数。',
+    '内部ではこの数のスレッドで並列にoffline/onlineへ問い合わせる。',
     '1なら逐次実行、大きくするほど負荷をかけた状態でのレイテンシ・エラー率の変化を見られる。',
+  ],
 }
 
 const requestCountHelp: ParamDoc = {
   label: 'Request count（総リクエスト数）',
-  help: 'このシナリオ実行全体で発行するlookup（またはバッチ）の総数。p50/p95/p99やqpsはこの母数から算出される。',
+  help: [
+    'このシナリオ実行全体で発行するlookup（またはバッチ）の総数。',
+    'p50/p95/p99やqpsはこの母数から算出される。',
+  ],
 }
 
 const batchSizeHelp: ParamDoc = {
   label: 'Batch size（1回あたりの件数）',
-  help:
-    '1回のクエリでまとめて取得するentity数。1なら「1件lookupのp50/p95/p99」の測定になり、' +
-    '10/100/1000などにすると「バッチ応答時間」の測定になる（同じコードパスで両方を測れる）。' +
+  help: [
+    '1回のクエリでまとめて取得するentity数。',
+    '1なら「1件lookupのp50/p95/p99」の測定になり、10/100/1000などにすると「バッチ応答時間」の測定になる（同じコードパスで両方を測れる）。',
     'request_count ÷ batch_size 回のラウンドトリップが発生する。',
+  ],
 }
 
 const publishModeHelp: ParamDoc = {
   label: 'Publish mode切替（任意）',
-  help:
-    '指定すると、計測前に online store への publish 方式を切り替えるジョブを実行してから計測する。' +
-    'TRIGGERED=明示的に再publishしない限り反映されない（スケジュールジョブ想定）。' +
-    'CONTINUOUS=offline側の更新をストリーミングで即時反映。「変更しない」を選ぶと現在の設定のまま計測する。',
+  help: [
+    '指定すると、計測前に online store への publish 方式を切り替えるジョブを実行してから計測する。',
+    'TRIGGERED=明示的に再publishしない限り反映されない（スケジュールジョブ想定）。',
+    'CONTINUOUS=offline側の更新をストリーミングで即時反映。',
+    '「変更しない」を選ぶと現在の設定のまま計測する。',
+  ],
 }
 
 export const SCENARIOS: ScenarioMeta[] = [
@@ -118,39 +129,6 @@ export const SCENARIOS: ScenarioMeta[] = [
     },
   },
   {
-    id: 'B',
-    icon: '🕰️',
-    accent: '#0891b2',
-    shortLabel: 'B. 時系列lookup',
-    title: 'シナリオB: 時系列lookup（point-in-time vs 常に最新値）',
-    howItWorks: [
-      '各entityについて「30日前の時刻」をas-of時刻として計算する。',
-      'offlineは feature_offline_timeseries に対して「as-of時刻以前で最も新しいスナップショット」をas-of joinで取得する' +
-        '（真のpoint-in-time lookup）。',
-      'onlineは online_feature_timeseries から常にそのentityの最新スナップショットのみを取得する' +
-        '（Online Feature Storeは最新値しか保持しないため、as-ofの概念がない）。',
-      '両者の activity_score を比較し、一致しているかを記録する。',
-    ],
-    whatItCompares: [
-      '「過去のある時点の正しい値を再現できるオフライン参照」と「常に最新値しか返せないオンライン参照」の性質の違い。',
-      'as-of時刻を意図的に過去にずらしているため、通常は一致しない（online側は最新値、offline側は30日前の値を返す）のが正しい挙動。',
-      'ここで一致率が高い/低いという数字自体よりも、「オンラインストアでは厳密なpoint-in-time検証はできない」という設計上の制約を可視化することが目的。',
-    ],
-    howToRead:
-      'value consistencyの一致率は低くて正常（doc記載の「検証ケースを分けないと厳密一致になってしまう」という注意点に対応）。' +
-      'レイテンシ比較自体はシナリオAと同様に読める。',
-    showAccessPattern: true,
-    showBatchSize: false,
-    showPublishMode: false,
-    defaults: { keySet: 'small', accessPattern: 'uniform', concurrency: 1, batchSize: 1, requestCount: 50 },
-    params: {
-      keySet: keySetHelp,
-      accessPattern: accessPatternHelp,
-      concurrency: concurrencyHelp,
-      requestCount: requestCountHelp,
-    },
-  },
-  {
     id: 'C',
     icon: '🔄',
     accent: '#d97706',
@@ -176,8 +154,8 @@ export const SCENARIOS: ScenarioMeta[] = [
     defaults: { keySet: 'small', accessPattern: 'uniform', concurrency: 1, batchSize: 1, requestCount: 5 },
     params: {
       keySet: keySetHelp,
-      requestCount: { ...requestCountHelp, help: requestCountHelp.help + '（内部で最大20件までに制限される）' },
-      concurrency: { ...concurrencyHelp, help: 'このシナリオでは常に逐次（1件ずつ）実行するため使用しない。' },
+      requestCount: { ...requestCountHelp, help: [...requestCountHelp.help, '内部で最大20件までに制限される。'] },
+      concurrency: { ...concurrencyHelp, help: ['このシナリオでは常に逐次（1件ずつ）実行するため使用しない。'] },
       publishMode: publishModeHelp,
     },
   },
@@ -240,7 +218,7 @@ export const SCENARIOS: ScenarioMeta[] = [
     params: {
       keySet: keySetHelp,
       accessPattern: accessPatternHelp,
-      concurrency: { ...concurrencyHelp, help: concurrencyHelp.help + '（Serving endpointへの同時リクエスト数にもなる）' },
+      concurrency: { ...concurrencyHelp, help: [...concurrencyHelp.help, 'Serving endpointへの同時リクエスト数にもなる。'] },
       requestCount: requestCountHelp,
     },
   },

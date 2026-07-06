@@ -85,71 +85,6 @@ def run_latest_value_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
     return {"offline": off_stats, "online": on_stats, "duration_sec": duration_sec}
 
 
-def run_timeseries_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
-    """Scenario B: offline as-of point-in-time lookup vs online (always-latest) lookup."""
-    pool = sampling.load_candidate_pool(admin_conn, cfg.key_set)
-    entity_ids = sampling.sample_entity_ids(pool, cfg.access_pattern, cfg.request_count)
-
-    offline_records: list[dict] = []
-    online_records: list[dict] = []
-    consistency_records: list[dict] = []
-    lock = threading.Lock()
-
-    rows = offline.fetch_all(
-        admin_conn,
-        f"SELECT entity_id, timestampadd(DAY, -30, event_ts) AS as_of FROM {config.fq('entity_base')} "
-        f"WHERE entity_id IN ({','.join('?' for _ in entity_ids)})",
-        entity_ids,
-    ) if entity_ids else []
-    as_of_by_id = {r["entity_id"]: r["as_of"] for r in rows}
-
-    def run_one(entity_id: str):
-        req_id = str(uuid.uuid4())
-        as_of = as_of_by_id.get(entity_id)
-        try:
-            oconn = _thread_offline_conn()
-            off_row, off_ms = offline.lookup_timeseries_as_of(oconn, entity_id, str(as_of))
-            off_ok, off_err = True, None
-        except Exception as e:  # noqa: BLE001
-            off_row, off_ms, off_ok, off_err = None, 0.0, False, str(e)
-        try:
-            on_row, on_ms = online.lookup_timeseries_latest(entity_id)
-            on_ok, on_err = True, None
-        except Exception as e:  # noqa: BLE001
-            on_row, on_ms, on_ok, on_err = None, 0.0, False, str(e)
-
-        with lock:
-            offline_records.append({"request_id": req_id, "entity_id": entity_id, "source_type": "offline",
-                                     "latency_ms": off_ms, "success": off_ok, "error_message": off_err})
-            online_records.append({"request_id": req_id, "entity_id": entity_id, "source_type": "online",
-                                    "latency_ms": on_ms, "success": on_ok, "error_message": on_err})
-            if off_row and on_row:
-                ov, nv = off_row.get("activity_score"), on_row.get("activity_score")
-                consistency_records.append({
-                    "entity_id": entity_id, "feature_name": "activity_score",
-                    "offline_value": str(ov), "online_value": str(nv), "is_match": str(ov) == str(nv),
-                })
-
-    start = time.perf_counter()
-    with ThreadPoolExecutor(max_workers=max(cfg.concurrency, 1)) as pool_exec:
-        futures = [pool_exec.submit(run_one, eid) for eid in entity_ids]
-        for f in as_completed(futures):
-            f.result()
-    duration_sec = time.perf_counter() - start
-
-    results.insert_requests(admin_conn, run_id, offline_records)
-    results.insert_requests(admin_conn, run_id, online_records)
-    off_stats = stats.summarize(offline_records, duration_sec)
-    on_stats = stats.summarize(online_records, duration_sec)
-    results.insert_result(admin_conn, run_id, "offline", off_stats)
-    results.insert_result(admin_conn, run_id, "online", on_stats)
-    results.insert_consistency(admin_conn, run_id, consistency_records)
-    note = ("as-of timestamps are intentionally 30 days in the past, so online (always-latest) "
-            "values are expected to differ from the offline point-in-time value -- low match rate "
-            "here is the correct/expected result, not a bug.")
-    return {"offline": off_stats, "online": on_stats, "duration_sec": duration_sec, "note": note}
-
-
 def run_freshness_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
     """Scenario C: measure publish -> visible-online lag, optionally after switching publish mode."""
     if cfg.publish_mode:
@@ -240,7 +175,6 @@ def run_serving_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
 
 SCENARIO_RUNNERS = {
     "A": run_latest_value_scenario,
-    "B": run_timeseries_scenario,
     "C": run_freshness_scenario,
     "D": run_latest_value_scenario,
     "E": run_serving_scenario,
@@ -248,7 +182,6 @@ SCENARIO_RUNNERS = {
 
 SCENARIO_NAMES = {
     "A": "latest_value_lookup",
-    "B": "timeseries_lookup",
     "C": "freshness",
     "D": "concurrency_load",
     "E": "automatic_feature_lookup_serving",
@@ -261,7 +194,7 @@ def execute_run(run_id: str, cfg: RunRequest) -> dict:
         results.insert_scenario(admin_conn, {
             "run_id": run_id, "scenario_id": cfg.scenario_id, "scenario_name": SCENARIO_NAMES[cfg.scenario_id],
             "access_pattern": cfg.access_pattern, "concurrency": cfg.concurrency, "batch_size": cfg.batch_size,
-            "publish_mode": cfg.publish_mode, "feature_set": "current+timeseries", "key_set": cfg.key_set,
+            "publish_mode": cfg.publish_mode, "feature_set": "current", "key_set": cfg.key_set,
         })
         runner_fn = SCENARIO_RUNNERS[cfg.scenario_id]
         outcome = runner_fn(run_id, cfg, admin_conn)

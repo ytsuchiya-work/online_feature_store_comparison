@@ -23,7 +23,6 @@ Lakebase を使用した Databricks Online Feature Store と、Unity Catalog Del
 | シナリオ | 内容 |
 |---|---|
 | A | 最新値lookup（offline vs online、単発/バッチ） |
-| B | 時系列lookup（offline point-in-time join vs online 最新値） |
 | C | freshness（offline更新 → online反映までの遅延、TRIGGERED/CONTINUOUS比較） |
 | D | 同時実行負荷（concurrency 1〜500） |
 | E | 自動feature lookup（Model Serving vs 生lookup） |

@@ -1,4 +1,4 @@
-export type ScenarioId = 'A' | 'B' | 'C' | 'D' | 'E'
+export type ScenarioId = 'A' | 'C' | 'D' | 'E'
 export type AccessPattern = 'uniform' | 'hot' | 'cold' | 'skewed'
 export type KeySet = 'small' | 'medium' | 'large'
 

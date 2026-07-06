@@ -87,20 +87,3 @@ def lookup_current(entity_ids: list[str]) -> tuple[list[dict[str, Any]], float]:
             rows = cur.fetchall()
             latency_ms = (time.perf_counter() - start) * 1000
     return rows, latency_ms
-
-
-def lookup_timeseries_latest(entity_id: str) -> tuple[dict[str, Any] | None, float]:
-    """The online store only ever holds the latest snapshot per primary key -- there is no
-    as-of lookup online. Used to compare against the offline point-in-time value."""
-    pool = get_pool()
-    with pool.connection() as conn:
-        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            table = resolve_table_name(cur, config.ONLINE_TABLE_TIMESERIES)
-            start = time.perf_counter()
-            cur.execute(
-                f"SELECT * FROM {table} WHERE entity_id = %s ORDER BY event_ts DESC LIMIT 1",
-                (entity_id,),
-            )
-            row = cur.fetchone()
-            latency_ms = (time.perf_counter() - start) * 1000
-    return row, latency_ms

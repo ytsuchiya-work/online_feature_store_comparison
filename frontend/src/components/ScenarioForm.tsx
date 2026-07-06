@@ -2,6 +2,16 @@ import { useState, type CSSProperties } from 'react'
 import { api, type RunRequest, type ScenarioId } from '../api'
 import { getScenarioMeta } from '../scenarios'
 
+function FieldHelp({ help }: { help: string[] }) {
+  return (
+    <ul className="field-help">
+      {help.map((line, i) => (
+        <li key={i}>{line}</li>
+      ))}
+    </ul>
+  )
+}
+
 export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId; onStarted: (runId: string) => void }) {
   const meta = getScenarioMeta(scenarioId)
   const [keySet, setKeySet] = useState<RunRequest['key_set']>(meta.defaults.keySet)
@@ -85,7 +95,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
             <option value="medium">medium (10,000)</option>
             <option value="large">large (1,000,000)</option>
           </select>
-          <span className="field-help">{meta.params.keySet.help}</span>
+          <FieldHelp help={meta.params.keySet.help} />
         </label>
 
         {meta.showAccessPattern && meta.params.accessPattern && (
@@ -97,7 +107,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
               <option value="cold">cold（広く分散）</option>
               <option value="skewed">skewed（80/20偏り）</option>
             </select>
-            <span className="field-help">{meta.params.accessPattern.help}</span>
+            <FieldHelp help={meta.params.accessPattern.help} />
           </label>
         )}
 
@@ -111,14 +121,14 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
             disabled={scenarioId === 'C'}
             onChange={(e) => setConcurrency(Number(e.target.value))}
           />
-          <span className="field-help">{meta.params.concurrency.help}</span>
+          <FieldHelp help={meta.params.concurrency.help} />
         </label>
 
         {meta.showBatchSize && meta.params.batchSize && (
           <label className="param-card">
             <span className="param-title">{meta.params.batchSize.label}</span>
             <input type="number" min={1} max={1000} value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} />
-            <span className="field-help">{meta.params.batchSize.help}</span>
+            <FieldHelp help={meta.params.batchSize.help} />
           </label>
         )}
 
@@ -131,7 +141,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
             value={requestCount}
             onChange={(e) => setRequestCount(Number(e.target.value))}
           />
-          <span className="field-help">{meta.params.requestCount.help}</span>
+          <FieldHelp help={meta.params.requestCount.help} />
         </label>
 
         {meta.showPublishMode && meta.params.publishMode && (
@@ -142,7 +152,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
               <option value="TRIGGERED">TRIGGERED に切り替えてから計測</option>
               <option value="CONTINUOUS">CONTINUOUS に切り替えてから計測</option>
             </select>
-            <span className="field-help">{meta.params.publishMode.help}</span>
+            <FieldHelp help={meta.params.publishMode.help} />
           </label>
         )}
       </div>

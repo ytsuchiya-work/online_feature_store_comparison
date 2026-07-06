@@ -263,6 +263,12 @@ body {
   font-size: 0.75rem;
   font-weight: 400;
   line-height: 1.45;
+  margin: 6px 0 0;
+  padding-left: 1.1em;
+}
+
+.field-help li {
+  margin: 2px 0;
 }
 
 .params-heading {
@@ -593,6 +599,34 @@ button.primary:disabled {
 .note {
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.concurrency-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.concurrency-chart-head h3 {
+  margin: 0;
+}
+
+.scenario-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.scenario-select select {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: white;
 }
 
 table {

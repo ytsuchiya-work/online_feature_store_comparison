@@ -2,7 +2,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel
 
-ScenarioId = Literal["A", "B", "C", "D", "E"]
+ScenarioId = Literal["A", "C", "D", "E"]
 AccessPattern = Literal["uniform", "hot", "cold", "skewed"]
 KeySet = Literal["small", "medium", "large"]
 PublishMode = Literal["TRIGGERED", "CONTINUOUS"]

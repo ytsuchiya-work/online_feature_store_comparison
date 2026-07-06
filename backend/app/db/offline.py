@@ -50,25 +50,6 @@ def lookup_current(conn, entity_ids: list[str]) -> tuple[list[dict[str, Any]], f
     return rows, latency_ms
 
 
-def lookup_timeseries_as_of(conn, entity_id: str, as_of_ts: str) -> tuple[dict[str, Any] | None, float]:
-    """Point-in-time lookup: most recent feature snapshot at/before as_of_ts for one entity."""
-    query = f"""
-        SELECT entity_id, event_ts, activity_score, txn_count, txn_amount, risk_score
-        FROM {config.fq('feature_offline_timeseries')}
-        WHERE entity_id = ? AND event_ts <= ?
-        ORDER BY event_ts DESC
-        LIMIT 1
-    """
-    start = time.perf_counter()
-    with conn.cursor() as cur:
-        cur.execute(query, [entity_id, as_of_ts])
-        cols = [d[0] for d in cur.description]
-        row = cur.fetchone()
-        result = dict(zip(cols, row)) if row else None
-    latency_ms = (time.perf_counter() - start) * 1000
-    return result, latency_ms
-
-
 def execute(conn, statement: str, params: list[Any] | None = None) -> None:
     with conn.cursor() as cur:
         cur.execute(statement, params or [])
