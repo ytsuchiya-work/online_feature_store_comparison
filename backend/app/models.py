@@ -2,7 +2,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel
 
-ScenarioId = Literal["A", "C", "D", "E"]
+ScenarioId = Literal["A", "B", "C", "D"]
 AccessPattern = Literal["uniform", "hot", "cold", "skewed"]
 KeySet = Literal["small", "medium", "large"]
 PublishMode = Literal["TRIGGERED", "CONTINUOUS"]
@@ -15,7 +15,7 @@ class RunRequest(BaseModel):
     concurrency: int = 1
     batch_size: int = 1
     request_count: int = 100
-    publish_mode: Optional[PublishMode] = None  # scenario C only; switches mode before measuring
+    publish_mode: Optional[PublishMode] = None  # scenario B only; switches mode before measuring
 
 
 class RunSummary(BaseModel):

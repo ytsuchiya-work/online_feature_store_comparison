@@ -129,11 +129,11 @@ export const SCENARIOS: ScenarioMeta[] = [
     },
   },
   {
-    id: 'C',
+    id: 'B',
     icon: '🔄',
     accent: '#d97706',
-    shortLabel: 'C. Freshness',
-    title: 'シナリオC: Freshness（更新反映までの遅延）',
+    shortLabel: 'B. Freshness',
+    title: 'シナリオB: Freshness（更新反映までの遅延）',
     howItWorks: [
       '（publish mode切替を指定した場合）まずジョブを起動し、online storeへのpublish方式をTRIGGERED/CONTINUOUSに切り替える。',
       '対象entity（最大20件）ごとに、online側の現在の risk_score を記録した上で、offline側の feature_offline_current を' +
@@ -160,11 +160,11 @@ export const SCENARIOS: ScenarioMeta[] = [
     },
   },
   {
-    id: 'D',
+    id: 'C',
     icon: '🚦',
     accent: '#dc2626',
-    shortLabel: 'D. 同時実行負荷',
-    title: 'シナリオD: 同時実行負荷（concurrencyスケーラビリティ）',
+    shortLabel: 'C. 同時実行負荷',
+    title: 'シナリオC: 同時実行負荷（concurrencyスケーラビリティ）',
     howItWorks: [
       '内部の処理はシナリオAと全く同じ（offline/online双方への同時lookup）。',
       '違いはconcurrencyを高く設定して実行する点のみ。1つのrunにつき1つのconcurrency値で計測する。',
@@ -192,11 +192,11 @@ export const SCENARIOS: ScenarioMeta[] = [
     tip: '同じ設定でconcurrencyだけ 1→10→50→100→500 と変えながら複数回実行し、ダッシュボードで比較するのがおすすめ。',
   },
   {
-    id: 'E',
+    id: 'D',
     icon: '🤖',
     accent: '#8b5cf6',
-    shortLabel: 'E. 自動feature lookup',
-    title: 'シナリオE: 自動feature lookup（Model Serving vs 生lookup）',
+    shortLabel: 'D. 自動feature lookup',
+    title: 'シナリオD: 自動feature lookup（Model Serving vs 生lookup）',
     howItWorks: [
       '各entityについて、Model Serving endpoint（fscomp-churn-serving）に entity_id だけを送信し、' +
         'エンドポイント側で自動feature lookupを行わせてスコアリング結果を得る（総所要時間を計測）。',

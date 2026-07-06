@@ -687,3 +687,12 @@ th {
   text-align: center;
   padding: 24px !important;
 }
+
+.error-cell {
+  color: #dc2626;
+  font-size: 0.78rem;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

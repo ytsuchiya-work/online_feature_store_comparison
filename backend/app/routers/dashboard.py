@@ -41,6 +41,32 @@ def consistency(run_id: str):
     return rows
 
 
+@router.get("/requests/{run_id}")
+def sample_requests(run_id: str, limit: int = 20):
+    """A sample of the actual individual offline/online/serving lookup calls made in a run."""
+    with offline_connection() as conn:
+        return fetch_all(
+            conn,
+            f"""SELECT request_id, entity_id, request_ts, source_type, latency_ms, success, error_message
+                FROM {config.fq('benchmark_requests')} WHERE run_id = ?
+                ORDER BY request_ts LIMIT {int(limit)}""",
+            [run_id],
+        )
+
+
+@router.get("/consistency-sample/{run_id}")
+def consistency_sample(run_id: str, limit: int = 20):
+    """A sample of actual offline vs online feature values compared in a run."""
+    with offline_connection() as conn:
+        return fetch_all(
+            conn,
+            f"""SELECT entity_id, feature_name, offline_value, online_value, is_match, checked_at
+                FROM {config.fq('value_consistency_results')} WHERE run_id = ?
+                ORDER BY checked_at LIMIT {int(limit)}""",
+            [run_id],
+        )
+
+
 @router.get("/cost/{run_id}")
 def cost_for_run(run_id: str):
     with offline_connection() as conn:

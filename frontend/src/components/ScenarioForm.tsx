@@ -36,7 +36,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
         concurrency,
         batch_size: batchSize,
         request_count: requestCount,
-        ...(scenarioId === 'C' && publishMode ? { publish_mode: publishMode } : {}),
+        ...(scenarioId === 'B' && publishMode ? { publish_mode: publishMode } : {}),
       }
       const { run_id } = await api.startRun(body)
       onStarted(run_id)
@@ -118,7 +118,7 @@ export function ScenarioForm({ scenarioId, onStarted }: { scenarioId: ScenarioId
             min={1}
             max={500}
             value={concurrency}
-            disabled={scenarioId === 'C'}
+            disabled={scenarioId === 'B'}
             onChange={(e) => setConcurrency(Number(e.target.value))}
           />
           <FieldHelp help={meta.params.concurrency.help} />

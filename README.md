@@ -11,10 +11,10 @@ Lakebase を使用した Databricks Online Feature Store と、Unity Catalog Del
   - `benchmark_scenarios` / `benchmark_requests` / `benchmark_results` / `value_consistency_results` / `cost_snapshots`
 - **Online Feature Store**: `fscomp-online-store`（Lakebase Autoscaling backed）。`feature_offline_current` /
   `feature_offline_timeseries` を TRIGGERED で publish
-- **Serving**: `fscomp-churn-serving`（自動feature lookup付きModel Servingエンドポイント、シナリオE用）
+- **Serving**: `fscomp-churn-serving`（自動feature lookup付きModel Servingエンドポイント、シナリオD用）
 - **セットアップ**: `notebooks/01_setup_online_feature_store.py`（feature table作成・online store作成・publish）、
   `notebooks/02_setup_model_serving.py`（モデル学習・登録・serving endpoint作成）、
-  `notebooks/03_toggle_publish.py`（publish_modeの切替、シナリオCから呼び出される）
+  `notebooks/03_toggle_publish.py`（publish_modeの切替、シナリオBから呼び出される）
 - **アプリ**: `backend/`（FastAPI）+ `frontend/`（React/Vite）。React は `npm run build` して
   `backend/app/static/` に出力したものをコミットする
 
@@ -23,9 +23,9 @@ Lakebase を使用した Databricks Online Feature Store と、Unity Catalog Del
 | シナリオ | 内容 |
 |---|---|
 | A | 最新値lookup（offline vs online、単発/バッチ） |
-| C | freshness（offline更新 → online反映までの遅延、TRIGGERED/CONTINUOUS比較） |
-| D | 同時実行負荷（concurrency 1〜500） |
-| E | 自動feature lookup（Model Serving vs 生lookup） |
+| B | freshness（offline更新 → online反映までの遅延、TRIGGERED/CONTINUOUS比較） |
+| C | 同時実行負荷（concurrency 1〜500） |
+| D | 自動feature lookup（Model Serving vs 生lookup） |
 
 ## ローカル開発
 

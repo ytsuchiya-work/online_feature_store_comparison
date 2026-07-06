@@ -2,7 +2,7 @@
 from typing import Any
 
 from app import config
-from app.db.offline import execute
+from app.db.offline import execute, fetch_all
 
 
 def insert_scenario(conn, run: dict[str, Any]) -> None:
@@ -79,3 +79,35 @@ def insert_cost_snapshot(conn, run_id: str, capacity: str, elapsed_sec: float,
             VALUES (?, ?, ?, ?, ?, ?, current_timestamp())""",
         [run_id, capacity, elapsed_sec, estimated_cu_hours, window_start, window_end],
     )
+
+
+def list_scenarios(conn, limit: int = 200) -> list[dict[str, Any]]:
+    """All persisted runs, newest first -- the durable source of run history across restarts."""
+    return fetch_all(
+        conn,
+        f"SELECT * FROM {config.fq('benchmark_scenarios')} ORDER BY created_at DESC LIMIT {int(limit)}",
+    )
+
+
+def fetch_scenario(conn, run_id: str) -> dict[str, Any] | None:
+    rows = fetch_all(conn, f"SELECT * FROM {config.fq('benchmark_scenarios')} WHERE run_id = ?", [run_id])
+    return rows[0] if rows else None
+
+
+def fetch_results_for_run(conn, run_id: str) -> list[dict[str, Any]]:
+    return fetch_all(conn, f"SELECT * FROM {config.fq('benchmark_results')} WHERE run_id = ?", [run_id])
+
+
+def results_by_run_ids(conn, run_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
+    if not run_ids:
+        return {}
+    placeholders = ",".join("?" for _ in run_ids)
+    rows = fetch_all(
+        conn,
+        f"SELECT * FROM {config.fq('benchmark_results')} WHERE run_id IN ({placeholders})",
+        run_ids,
+    )
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        grouped.setdefault(r["run_id"], []).append(r)
+    return grouped

@@ -7,7 +7,7 @@ const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / ar
 
 export function Dashboard() {
   const [rows, setRows] = useState<ResultRow[]>([])
-  const [concurrencyScenario, setConcurrencyScenario] = useState<ScenarioId>('D')
+  const [concurrencyScenario, setConcurrencyScenario] = useState<ScenarioId>('C')
 
   useEffect(() => {
     let stop = false

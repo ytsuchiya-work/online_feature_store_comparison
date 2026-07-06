@@ -27,7 +27,7 @@ def _now_iso() -> str:
 
 
 def run_latest_value_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
-    """Scenario A / D: single or batched latest-value lookup, offline vs online."""
+    """Scenario A / C: single or batched latest-value lookup, offline vs online."""
     pool = sampling.load_candidate_pool(admin_conn, cfg.key_set)
     entity_ids = sampling.sample_entity_ids(pool, cfg.access_pattern, cfg.request_count)
     batch_list = list(sampling.batches(entity_ids, max(cfg.batch_size, 1)))
@@ -86,7 +86,7 @@ def run_latest_value_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
 
 
 def run_freshness_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
-    """Scenario C: measure publish -> visible-online lag, optionally after switching publish mode."""
+    """Scenario B: measure publish -> visible-online lag, optionally after switching publish mode."""
     if cfg.publish_mode:
         jobs.set_publish_mode(
             source_table=config.fq("feature_offline_current"),
@@ -134,7 +134,7 @@ def run_freshness_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
 
 
 def run_serving_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
-    """Scenario E: automatic feature lookup via Model Serving vs raw online lookup."""
+    """Scenario D: automatic feature lookup via Model Serving vs raw online lookup."""
     pool = sampling.load_candidate_pool(admin_conn, cfg.key_set)
     entity_ids = sampling.sample_entity_ids(pool, cfg.access_pattern, cfg.request_count)
 
@@ -175,16 +175,16 @@ def run_serving_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
 
 SCENARIO_RUNNERS = {
     "A": run_latest_value_scenario,
-    "C": run_freshness_scenario,
-    "D": run_latest_value_scenario,
-    "E": run_serving_scenario,
+    "B": run_freshness_scenario,
+    "C": run_latest_value_scenario,
+    "D": run_serving_scenario,
 }
 
 SCENARIO_NAMES = {
     "A": "latest_value_lookup",
-    "C": "freshness",
-    "D": "concurrency_load",
-    "E": "automatic_feature_lookup_serving",
+    "B": "freshness",
+    "C": "concurrency_load",
+    "D": "automatic_feature_lookup_serving",
 }
 
 

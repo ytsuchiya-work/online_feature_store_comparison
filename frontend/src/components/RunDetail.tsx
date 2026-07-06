@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { api, type RunSummary } from '../api'
+import { api, type RunSummary, type SampleConsistency, type SampleRequest } from '../api'
 
 const SOURCE_COLOR: Record<string, string> = {
   offline: '#3b82f6',
@@ -25,6 +25,8 @@ export function RunDetail({ runId }: { runId: string }) {
   const [run, setRun] = useState<RunSummary | null>(null)
   const [consistency, setConsistency] = useState<any[]>([])
   const [cost, setCost] = useState<any | null>(null)
+  const [sampleRequests, setSampleRequests] = useState<SampleRequest[]>([])
+  const [sampleConsistency, setSampleConsistency] = useState<SampleConsistency[]>([])
 
   useEffect(() => {
     let stop = false
@@ -34,10 +36,17 @@ export function RunDetail({ runId }: { runId: string }) {
         if (stop) return
         setRun(r)
         if (r.status === 'succeeded') {
-          const [c, cst] = await Promise.all([api.consistency(runId), api.cost(runId)])
+          const [c, cst, reqs, cons] = await Promise.all([
+            api.consistency(runId),
+            api.cost(runId),
+            api.sampleRequests(runId, 20),
+            api.sampleConsistency(runId, 20),
+          ])
           if (!stop) {
             setConsistency(c)
             setCost(cst)
+            setSampleRequests(reqs)
+            setSampleConsistency(cons)
           }
         }
       } catch (e) {
@@ -153,6 +162,75 @@ export function RunDetail({ runId }: { runId: string }) {
               )
             })}
           </div>
+        </>
+      )}
+
+      {sampleRequests.length > 0 && (
+        <>
+          <h3 className="section-heading">🔍 実行内容サンプル（offline/online個別リクエスト）</h3>
+          <p className="note">
+            このrunで実際にofflineとonlineに対して発行されたlookupの生ログ（先頭{sampleRequests.length}件）。
+            latencyや成否がentity単位でどうなっているか、実際の挙動を確認できる。
+          </p>
+          <table className="metrics-table">
+            <thead>
+              <tr>
+                <th>時刻</th>
+                <th>source</th>
+                <th>entity_id</th>
+                <th>latency(ms)</th>
+                <th>成否</th>
+                <th>エラー</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sampleRequests.map((r) => (
+                <tr key={r.request_id}>
+                  <td className="date-cell">{new Date(r.request_ts).toLocaleTimeString()}</td>
+                  <td>
+                    <span style={{ color: SOURCE_COLOR[r.source_type] ?? '#6b7280' }}>
+                      {SOURCE_LABEL[r.source_type] ?? r.source_type}
+                    </span>
+                  </td>
+                  <td>{r.entity_id}</td>
+                  <td>{r.latency_ms?.toFixed(2)}</td>
+                  <td>{r.success ? '✅' : '❌'}</td>
+                  <td className="error-cell">{r.error_message ?? '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {sampleConsistency.length > 0 && (
+        <>
+          <h3 className="section-heading">🧪 実測値サンプル（offline vs online）</h3>
+          <p className="note">
+            同一entityについて、offlineとonlineが実際に返した値そのものを突き合わせたサンプル（先頭{sampleConsistency.length}件）。
+          </p>
+          <table className="metrics-table">
+            <thead>
+              <tr>
+                <th>entity_id</th>
+                <th>feature</th>
+                <th>offline値</th>
+                <th>online値</th>
+                <th>一致</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sampleConsistency.map((c, i) => (
+                <tr key={i}>
+                  <td>{c.entity_id}</td>
+                  <td>{c.feature_name}</td>
+                  <td>{c.offline_value}</td>
+                  <td>{c.online_value}</td>
+                  <td>{c.is_match ? '✅' : '❌'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </>
       )}
 

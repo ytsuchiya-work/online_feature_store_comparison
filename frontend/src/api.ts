@@ -1,4 +1,4 @@
-export type ScenarioId = 'A' | 'C' | 'D' | 'E'
+export type ScenarioId = 'A' | 'B' | 'C' | 'D'
 export type AccessPattern = 'uniform' | 'hot' | 'cold' | 'skewed'
 export type KeySet = 'small' | 'medium' | 'large'
 
@@ -20,6 +20,25 @@ export interface RunSummary {
   config: RunRequest
   outcome: any
   error: string | null
+}
+
+export interface SampleRequest {
+  request_id: string
+  entity_id: string
+  request_ts: string
+  source_type: string
+  latency_ms: number
+  success: boolean
+  error_message: string | null
+}
+
+export interface SampleConsistency {
+  entity_id: string
+  feature_name: string
+  offline_value: string
+  online_value: string
+  is_match: boolean
+  checked_at: string
 }
 
 export interface ResultRow {
@@ -61,5 +80,8 @@ export const api = {
   getRun: (runId: string) => req<RunSummary>(`/runs/${runId}`),
   dashboardResults: () => req<ResultRow[]>('/dashboard/results'),
   consistency: (runId: string) => req<any[]>(`/dashboard/consistency/${runId}`),
+  sampleRequests: (runId: string, limit = 20) => req<SampleRequest[]>(`/dashboard/requests/${runId}?limit=${limit}`),
+  sampleConsistency: (runId: string, limit = 20) =>
+    req<SampleConsistency[]>(`/dashboard/consistency-sample/${runId}?limit=${limit}`),
   cost: (runId: string) => req<any>(`/dashboard/cost/${runId}`),
 }
