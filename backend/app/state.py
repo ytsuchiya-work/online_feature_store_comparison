@@ -61,7 +61,10 @@ def _summary_from_persisted(scenario_row: dict[str, Any], result_rows: list[dict
     if freshness_row is not None:
         outcome["avg_freshness_lag_ms"] = freshness_row["freshness_lag_ms"]
         outcome["publish_mode"] = scenario_row.get("publish_mode") or "unchanged"
-    if "serving" in outcome and "online" in outcome:
+    if "offline_scoring" in outcome and "serving" in outcome:
+        outcome["offline_vs_online_p50_ms"] = outcome["offline_scoring"]["p50_ms"] - outcome["serving"]["p50_ms"]
+    elif "serving" in outcome and "online" in outcome:
+        # Legacy scenario D/E runs: serving (auto lookup) vs raw online lookup.
         outcome["lookup_overhead_p50_ms"] = outcome["serving"]["p50_ms"] - outcome["online"]["p50_ms"]
 
     request_count = result_rows[0]["request_count"] if result_rows else 0

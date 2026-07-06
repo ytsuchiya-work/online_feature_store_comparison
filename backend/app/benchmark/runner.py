@@ -133,28 +133,51 @@ def run_freshness_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
     return {"online": on_stats, "avg_freshness_lag_ms": avg_lag, "publish_mode": cfg.publish_mode or "unchanged"}
 
 
+MODEL_FEATURE_COLS = ["activity_score_7d", "activity_score_30d", "txn_count_7d", "txn_amount_7d", "risk_score"]
+
+
 def run_serving_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
-    """Scenario D: automatic feature lookup via Model Serving vs raw online lookup."""
+    """Scenario D: single-row realtime inference, offline vs online feature path.
+
+    Both paths score on the same Model Serving endpoint, so the model and scoring infra
+    are identical -- only the feature retrieval differs:
+    - offline_scoring: fetch the feature row from the offline Delta table via SQL warehouse,
+      then send the values to the endpoint (providing features skips the online lookup).
+      This deliberately misuses the batch-oriented offline path for row-by-row inference.
+    - serving: send only the entity_id; the endpoint auto-looks-up features from the
+      Lakebase online store (the intended realtime path).
+    """
     pool = sampling.load_candidate_pool(admin_conn, cfg.key_set)
     entity_ids = sampling.sample_entity_ids(pool, cfg.access_pattern, cfg.request_count)
 
+    offline_records: list[dict] = []
     serving_records: list[dict] = []
-    online_records: list[dict] = []
     lock = threading.Lock()
 
     def run_one(entity_id: str):
         req_id = str(uuid.uuid4())
-        resp, s_ms, s_err = score_entity(entity_id)
+
+        off_start = time.perf_counter()
         try:
-            on_rows, on_ms = online.lookup_current([entity_id])
-            on_ok, on_err = True, None
+            oconn = _thread_offline_conn()
+            rows, _ = offline.lookup_current(oconn, [entity_id])
+            if not rows:
+                raise RuntimeError(f"entity {entity_id} not found in offline feature table")
+            features = {col: float(rows[0][col]) if rows[0][col] is not None else 0.0
+                        for col in MODEL_FEATURE_COLS}
+            off_resp, _, off_err = score_entity(entity_id, features=features)
+            off_ok = off_resp is not None and off_err is None
         except Exception as e:  # noqa: BLE001
-            on_ms, on_ok, on_err = 0.0, False, str(e)
+            off_ok, off_err = False, str(e)
+        off_ms = (time.perf_counter() - off_start) * 1000
+
+        on_resp, on_ms, on_err = score_entity(entity_id)
+
         with lock:
+            offline_records.append({"request_id": req_id, "entity_id": entity_id, "source_type": "offline_scoring",
+                                     "latency_ms": off_ms, "success": off_ok, "error_message": off_err})
             serving_records.append({"request_id": req_id, "entity_id": entity_id, "source_type": "serving",
-                                     "latency_ms": s_ms, "success": resp is not None, "error_message": s_err})
-            online_records.append({"request_id": req_id, "entity_id": entity_id, "source_type": "online",
-                                    "latency_ms": on_ms, "success": on_ok, "error_message": on_err})
+                                     "latency_ms": on_ms, "success": on_resp is not None, "error_message": on_err})
 
     start = time.perf_counter()
     with ThreadPoolExecutor(max_workers=max(cfg.concurrency, 1)) as pool_exec:
@@ -163,14 +186,14 @@ def run_serving_scenario(run_id: str, cfg: RunRequest, admin_conn) -> dict:
             f.result()
     duration_sec = time.perf_counter() - start
 
+    results.insert_requests(admin_conn, run_id, offline_records)
     results.insert_requests(admin_conn, run_id, serving_records)
-    results.insert_requests(admin_conn, run_id, online_records)
+    offline_stats = stats.summarize(offline_records, duration_sec)
     serving_stats = stats.summarize(serving_records, duration_sec)
-    online_stats = stats.summarize(online_records, duration_sec)
+    results.insert_result(admin_conn, run_id, "offline_scoring", offline_stats)
     results.insert_result(admin_conn, run_id, "serving", serving_stats)
-    results.insert_result(admin_conn, run_id, "online", online_stats)
-    overhead_ms = serving_stats["p50_ms"] - online_stats["p50_ms"]
-    return {"serving": serving_stats, "online": online_stats, "lookup_overhead_p50_ms": overhead_ms}
+    gap_ms = offline_stats["p50_ms"] - serving_stats["p50_ms"]
+    return {"offline_scoring": offline_stats, "serving": serving_stats, "offline_vs_online_p50_ms": gap_ms}
 
 
 SCENARIO_RUNNERS = {
@@ -184,7 +207,7 @@ SCENARIO_NAMES = {
     "A": "latest_value_lookup",
     "B": "freshness",
     "C": "concurrency_load",
-    "D": "automatic_feature_lookup_serving",
+    "D": "single_row_inference_offline_vs_online",
 }
 
 

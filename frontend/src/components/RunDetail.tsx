@@ -6,12 +6,14 @@ const SOURCE_COLOR: Record<string, string> = {
   offline: '#3b82f6',
   online: '#10b981',
   serving: '#8b5cf6',
+  offline_scoring: '#0891b2',
 }
 
 const SOURCE_LABEL: Record<string, string> = {
   offline: '🗄️ Offline (Delta)',
   online: '⚡ Online (Lakebase)',
-  serving: '🤖 Serving (自動lookup)',
+  serving: '🤖 Online推論 (自動lookup)',
+  offline_scoring: '🐢 Offline経由推論 (Delta取得+推論)',
 }
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
@@ -135,6 +137,12 @@ export function RunDetail({ runId }: { runId: string }) {
         </div>
       )}
       {outcome.note && <p className="note">ℹ️ {outcome.note}</p>}
+      {outcome.offline_vs_online_p50_ms !== undefined && (
+        <div className="highlight-box">
+          🤖 オフライン経由 − オンライン (p50): <strong>{outcome.offline_vs_online_p50_ms.toFixed(2)} ms</strong>
+          {' '}— オフラインFSを1行推論に流用した場合に1リクエストあたり余計にかかる時間
+        </div>
+      )}
       {outcome.lookup_overhead_p50_ms !== undefined && (
         <div className="highlight-box">
           🤖 自動feature lookupのoverhead (p50): <strong>{outcome.lookup_overhead_p50_ms.toFixed(2)} ms</strong>

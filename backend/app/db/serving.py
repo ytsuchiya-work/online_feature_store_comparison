@@ -1,6 +1,7 @@
-"""Scenario E: call the Model Serving endpoint with automatic feature lookup enabled."""
+"""Scenario D: call the Model Serving endpoint, with or without automatic feature lookup."""
 import os
 import time
+from typing import Any
 
 import requests
 from databricks.sdk.core import Config
@@ -13,14 +14,21 @@ def _cfg() -> Config:
     return Config(profile=profile) if profile else Config()
 
 
-def score_entity(entity_id: str) -> tuple[dict | None, float, str | None]:
-    """Send only the entity_id -- the endpoint auto-looks-up the rest of the features.
-    Returns (response_json, latency_ms, error)."""
+def score_entity(entity_id: str, features: dict[str, Any] | None = None) -> tuple[dict | None, float, str | None]:
+    """Score one entity on the serving endpoint.
+
+    Without `features`, only the entity_id is sent and the endpoint auto-looks-up the
+    feature values from the online store (the online realtime-inference path).
+    With `features`, the provided values are sent in the request; the endpoint then skips
+    the online lookup and uses them as-is, so the same model/scoring infra can be driven
+    by features fetched from the offline store. Returns (response_json, latency_ms, error).
+    """
     cfg = _cfg()
     headers = cfg.authenticate()
     headers["Content-Type"] = "application/json"
     url = f"{cfg.host}/serving-endpoints/{config.SERVING_ENDPOINT_NAME}/invocations"
-    payload = {"dataframe_records": [{"entity_id": entity_id}]}
+    record: dict[str, Any] = {"entity_id": entity_id, **(features or {})}
+    payload = {"dataframe_records": [record]}
 
     start = time.perf_counter()
     try:

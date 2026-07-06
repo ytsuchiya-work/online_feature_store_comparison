@@ -195,22 +195,27 @@ export const SCENARIOS: ScenarioMeta[] = [
     id: 'D',
     icon: '🤖',
     accent: '#8b5cf6',
-    shortLabel: 'D. 自動feature lookup',
-    title: 'シナリオD: 自動feature lookup（Model Serving vs 生lookup）',
+    shortLabel: 'D. 1行推論比較',
+    title: 'シナリオD: 1行リアルタイム推論（オフライン経由 vs オンライン自動lookup）',
     howItWorks: [
-      '各entityについて、Model Serving endpoint（fscomp-churn-serving）に entity_id だけを送信し、' +
-        'エンドポイント側で自動feature lookupを行わせてスコアリング結果を得る（総所要時間を計測）。',
-      '同時に、同じentityについてOnlineストアから生のfeature値を直接取得する（シナリオAと同じonlineパス）。',
-      '両者の所要時間を比較する。',
+      'オンライン推論: Model Serving endpoint（fscomp-churn-serving）に entity_id だけを送信し、' +
+        'エンドポイントがLakebase online storeから自動feature lookupを行って推論する（本来のリアルタイム推論経路）。',
+      'オフライン経由の1行推論: アプリがSQL warehouse経由でオフラインfeature table（Delta）から同じentityの' +
+        'feature値を1行取得し、その値をリクエストに含めて同じendpointに送信する' +
+        '（feature値を明示的に渡すと自動lookupはスキップされ、渡した値がそのまま使われる）。',
+      'モデルも推論基盤も完全に同一なので、両者のレイテンシ差は「feature取得経路の違い」だけを反映する。',
+      'オフラインfeature storeは本来Sparkによるバッチ推論（score_batch）用であり、これをあえて1行ずつの' +
+        'リアルタイム推論に流用した場合のコストを可視化する。',
     ],
     whatItCompares: [
-      '「Model Servingが自動で行うfeature lookup込みの推論時間」と「feature lookupだけの生の時間」の差分＝' +
-        'モデル推論そのものやネットワークなど、lookup以外にかかっているオーバーヘッド。',
-      'automatic feature lookupが実運用でどの程度のレイテンシコストを追加するのかを定量化できる。',
+      '「オフラインFSをあえて1行推論に使った場合（SQL warehouseでのfeature取得＋推論）」と' +
+        '「オンラインFS＋自動feature lookupによる正規のリアルタイム推論」のend-to-endレイテンシ差。',
+      'オンラインFeature Storeを用意せずにリアルタイム推論をやろうとすると、feature取得がどれだけ' +
+        'ボトルネックになるかを定量化できる。',
     ],
     howToRead:
-      'run詳細に表示される「自動feature lookupのoverhead (p50)」が、Serving p50 と Online p50 の差分。' +
-      'この値が小さいほど、自動feature lookupの追加コストが小さいことを意味する。',
+      'run詳細の「オフライン経由 − オンライン (p50)」が、オフラインFS流用によって1リクエストあたり余計にかかる時間。' +
+      'オフライン経由はSQL warehouseのクエリ時間が支配的で数百ms以上、オンラインは自動lookup込みでも大幅に短くなるのが典型。',
     showAccessPattern: true,
     showBatchSize: false,
     showPublishMode: false,

@@ -5,6 +5,14 @@ import { SCENARIOS } from '../scenarios'
 
 const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null)
 
+// Sources that can appear in the concurrency chart, in display order.
+const CHART_SOURCES: { key: string; color: string; label: string }[] = [
+  { key: 'offline', color: '#3b82f6', label: 'offline p95' },
+  { key: 'online', color: '#16a34a', label: 'online p95' },
+  { key: 'offline_scoring', color: '#0891b2', label: 'offline経由推論 p95' },
+  { key: 'serving', color: '#8b5cf6', label: 'online推論 p95' },
+]
+
 export function Dashboard() {
   const [rows, setRows] = useState<ResultRow[]>([])
   const [concurrencyScenario, setConcurrencyScenario] = useState<ScenarioId>('C')
@@ -27,21 +35,25 @@ export function Dashboard() {
     }
   }, [])
 
-  // Group by concurrency, keeping offline/online separate, and average duplicate runs at the
+  // Group by concurrency, keeping each source separate, and average duplicate runs at the
   // same concurrency so each concurrency value renders as exactly one bar per source.
-  const concurrencyGroups = new Map<number, { offline: number[]; online: number[] }>()
+  const chartSourceKeys = CHART_SOURCES.map((s) => s.key)
+  const concurrencyGroups = new Map<number, Record<string, number[]>>()
   for (const r of rows) {
     if (r.scenario_id !== concurrencyScenario) continue
-    if (r.source_type !== 'offline' && r.source_type !== 'online') continue
-    if (!concurrencyGroups.has(r.concurrency)) concurrencyGroups.set(r.concurrency, { offline: [], online: [] })
-    concurrencyGroups.get(r.concurrency)![r.source_type].push(r.p95_ms)
+    if (!chartSourceKeys.includes(r.source_type)) continue
+    if (!concurrencyGroups.has(r.concurrency)) concurrencyGroups.set(r.concurrency, {})
+    const group = concurrencyGroups.get(r.concurrency)!
+    ;(group[r.source_type] ??= []).push(r.p95_ms)
   }
+  const activeSources = CHART_SOURCES.filter((s) =>
+    Array.from(concurrencyGroups.values()).some((group) => group[s.key]?.length),
+  )
   const concurrencySeries = Array.from(concurrencyGroups.entries())
     .sort(([a], [b]) => a - b)
-    .map(([concurrency, vals]) => ({
+    .map(([concurrency, group]) => ({
       concurrency,
-      offline_p95: avg(vals.offline) ?? undefined,
-      online_p95: avg(vals.online) ?? undefined,
+      ...Object.fromEntries(activeSources.map((s) => [`${s.key}_p95`, avg(group[s.key] ?? []) ?? undefined])),
     }))
 
   const offlineRows = rows.filter((r) => r.source_type === 'offline')
@@ -107,7 +119,7 @@ export function Dashboard() {
       {concurrencySeries.length > 0 ? (
         <>
           <p className="note">
-            横軸=concurrency（同時実行数）、縦軸=p95レイテンシ(ms)。offlineとonlineを棒で並べて表示し、
+            横軸=concurrency（同時実行数）、縦軸=p95レイテンシ(ms)。経路（source）ごとに棒を並べて表示し、
             同じconcurrencyで複数回実行している場合はその平均値を1本のバーとして示す。
             バーが急激に高くなる地点が、そのバックエンドの実質的な限界に近い並列度。
           </p>
@@ -119,8 +131,9 @@ export function Dashboard() {
                 <YAxis label={{ value: 'p95 (ms)', angle: -90, position: 'insideLeft' }} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="offline_p95" fill="#3b82f6" name="offline p95" />
-                <Bar dataKey="online_p95" fill="#16a34a" name="online p95" />
+                {activeSources.map((s) => (
+                  <Bar key={s.key} dataKey={`${s.key}_p95`} fill={s.color} name={s.label} />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -134,8 +147,8 @@ export function Dashboard() {
 
       <h3>全実行結果</h3>
       <p className="note">
-        1行 = 1実行(run) × 1経路(source)。同じrun_idでofflineとonline（、E実行時はserving）の行がペアになっているので、
-        run_idで絞り込んで見比べると比較しやすい。
+        1行 = 1実行(run) × 1経路(source)。同じrun_idで経路の行がペアになっている
+        （A/Cはoffline/online、Dはoffline_scoring/serving）ので、run_idで絞り込んで見比べると比較しやすい。
       </p>
       <table className="metrics-table">
         <thead>
